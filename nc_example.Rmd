@@ -1,0 +1,68 @@
+---
+title: "redist 101 - NC Example"
+author: "Melissa Wu"
+date: "2022-09-12"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Setup
+
+First, we load the required packages for analysis. If the packages are not installed yet, be sure to do so beforehand.
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(alarmdata)
+library(redist)
+```
+
+# Download Simulation Data
+
+We can access data from all 50 states in the US using `alarmdata`. Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans` downloads the 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
+
+```{r}
+data_nc <- alarm_census_vest("NC")
+map_nc <- alarm_50state_map("NC")
+plans_nc <- alarm_50state_plans("NC")
+```
+
+If you are curious how these plans were generated, the code is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020). 
+
+Specifically in North Carolina, districts must:
+1. be contiguous
+2. have equal populations
+3. be geographically compact
+4. preserve county boundaries as much as possible
+Each of these redistricting requirements, in addition to the 1965 Voting Rights Act, were closely followed when conducting the simulations.
+
+The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. However, analysts might want to compare other custom plans to the 50-State simulations. This can be done with `alarm_add_plan()`. The following example adds the 2010 enacted plan for North Carolina as a reference plan to the `plans_nc` object.
+```{r}
+# error - 2010 plan has 13 districts, 2020 plan has 14
+# plans_nc %>% alarm_add_plan(plans_nc, ref_plan = map_nc$cd_2010, map_nc, name = "cd_2010")
+```
+
+We can plot some of these plans to visualize the geographical boundaries of the simulated districts.
+
+```{r}
+redist.plot.plans(plans_nc, draws=1:4, shp=map_nc)
+```
+
+We can use `comp_edge` to measure the compactness of entire plans, and we can use `comp_polsby` to measure the compactness of individual districts across plans. 
+
+```{r}
+redist.plot.hist(plans_nc, qty = comp_edge) +
+  labs(x = "Fraction of Edges Kept", y = "Percentage of Plans") +
+  theme_bw()
+```
+
+
+We can also compare distributions of a certain summary statistic across districts. The following code plots the distribution of democratic percentage of each district for all simulations.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20_rep_tru), geom = "boxplot") +
+  labs(y = "2020 Presidential Democratic Vote Percentage") +
+  theme_bw()
+```
+
