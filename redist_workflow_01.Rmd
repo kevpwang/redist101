@@ -1,0 +1,80 @@
+---
+title: "redist 101 - redist workflow 01"
+author: "Sho Miyazaki"
+date: "2022-09-15"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(alarmdata)
+library(redist)
+```
+
+# Overview of building data objects
+
+## `redist_map` 
+The first step one in a `redist` analysis is creating the `redist_map` object, which stores the basic parameters of the redistricting problem. 
+Here, we use the `redist_map` objects that can be downloaded from `alarmdata` package.
+```{r message=FALSE}
+map_nc <- alarm_50state_map("NC")
+print(map_nc)
+```
+As it shows above, `redist_map` (and shapefiles) looks like an dataframe with many columns, such as populations and geographical information. 
+
+For example, the `geometry` column contains the geographic shapefile information, which can be mapped as `POLYGON` (or `MULTIPOLYGON`) shape of the geographical area. 
+
+```{r}
+head(map_nc$geometry)
+```
+
+## Shapefiles and Projections
+If you want to use the other shapefile data for the redistricting analysis (other countries, etc.), you need to transform the available shapefiles (census data, etc.) into the `redist_map` objects using [`redist_map()` function](https://alarm-redist.org/redist/reference/redist_map.html). 
+
+As there are multiple formats of [shapefiles](https://r-spatial.github.io/sf/), you may also need to convert and adjust them into a unified format. 
+For example, projections must be in the same style. For more information, check pp.17-18 of [this presentation for the workshop](https://docs.google.com/presentation/d/1FlTfDv8sjhDxxU2KIOnKd1SHhvivm7WdD0bYdrNNgo0/edit#slide=id.g11d65f9e588_0_0). 
+
+## Adjacency List
+Since the legislative district plans are generally required to be contiguous, all the `redist` simulation algorithms operate on an *adjacency graph*, which is constructed from the actual precinct or county geography.
+
+What is adjacency? -- It is the formalization of contiguity. 
+
+Then, what does contiguity means? -- Two units are adjacent if they are contiguous geographically. 
+
+Let’s check what the adjacency list looks like.
+The `adj` column of `redist_map` is the adjacency list. 
+
+```{r}
+head(map_nc$adj)
+```
+
+As you can see, the adjacency list shows that the area (row-wise) is adjacent/contiguous to which areas. 
+
+With the `redist_map` object, we can plot this adjacency list. 
+```{r}
+plot(map_nc, adj=T)
+```
+
+You may need to (fix the adjacency list manually)][https://christophertkenny.com/geomander/reference/add_edge.html], particularly when there are islands connected with bridge. 
+
+## Adding reference plans 
+??? 
+
+## Further Pre-processing
+Often, we want to only analyze a portion of a map, or hold some districts fixed while others are re-simulated. We may also want to implement a status-quo-type constraint that encourages simulated districts to be close to a reference plan. This can be accomplished by freezing the “cores” of each district.
+
+All of these operations fall under the umbrella of map pre-processing, and `redist` is well-equipped to handle them.  
+
+The map [pre-processing vignette](https://alarm-redist.org/redist/articles/map-preproc.html) contains more information and examples about these operations.
+
+
+Running simulations
+redist_smc, redist_mergesplit
+Constraints
+Purpose is to operationalize legal requirements and norms
+Pop tol (hard constraint)
+Soft constraints
+redist_plans output, which we use to do stuff
