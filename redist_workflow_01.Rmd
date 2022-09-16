@@ -1,7 +1,7 @@
 ---
 title: "redist 101 - redist workflow 01"
 author: "Sho Miyazaki"
-date: "2022-09-15"
+date: "2022-09-16"
 output:
   html_document: default
   pdf_document: default
@@ -9,6 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(width = 100)
 library(tidyverse)
 library(alarmdata)
 library(redist)
@@ -55,10 +56,10 @@ As you can see, the adjacency list shows that the area (row-wise) is adjacent/co
 
 With the `redist_map` object, we can plot this adjacency list. 
 ```{r}
-plot(map_nc, adj=T)
+plot(map_nc, adj=TRUE)
 ```
 
-You may need to (fix the adjacency list manually)][https://christophertkenny.com/geomander/reference/add_edge.html], particularly when there are islands connected with bridge. 
+You may need to (fix the adjacency list manually)] with [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are islands connected with bridge. 
 
 ## Adding reference plans 
 ??? 
@@ -97,8 +98,69 @@ redist.plot.plans(smc_plans_basic, draws=1:6, shp=map_nc)
 
 ## Constraints
 
-Constraints
-Purpose is to operationalize legal requirements and norms
-Pop tol (hard constraint)
-Soft constraints
-redist_plans output, which we use to do stuff
+The simulation output from the SMC is umbiased random sample, but not always mean representative.
+Since each state (or equivalent) has a different legal requirements for the redistricting plan, representative sample has to be in the resemble the space of legal possibilities. 
+Thus, we need to customize the constraints to operationalize legal requirements and norms. 
+For example, in some cases, each district has to have an equal population, while the margins of tolerance exist, which can be varied by the state. To adjust to that rule, we can customize the constraints as you can see below. 
+In `redist`, you can add both *hard* and *soft* constraints.
+
+### Hard Constraits
+* Population Tolerance (`pop_tol`= 0.0x) -- all plans must be within x% of population equality.
+* Contiguity -- all plans must be contiguous 
+* County splits -- all plans must have up to a small number of splits
+
+### Soft constraints
+* `redist` allows you to add soft constraints that are listed [here](https://alarm-redist.org/redist/reference/constraints.html). 
+* Using [`add_constr_xyz()`](https://alarm-redist.org/redist/reference/constraints.html) (`xyz` varies depending on the constraints you want to add) functions, you can add constraints on the redistricting process to be encoded in the target distribution for sampling of `redist_smc()` and `redist_mergesplit()`. 
+* Note that higher and higher strength values will eventually cause the algorithm's accuracy and efficiency to suffer. Whenever you use constraints, be sure to check all sampling diagnostics.
+  
+### Example
+#### Change Population Tolerance
+You can use `get_pop_tol()` function to check the current population tolerance of `redist_map` object.
+
+```{r}
+get_pop_tol(map_nc)
+```
+As you can see above, the population tolerance of `map_nc` is `r get_pop_tol(map_nc)`.
+This means that all plans must be within `r 100*get_pop_tol(map_nc)`% of population equality.
+This is why you can see the output message of `redist_smc()` shows following.
+```{r}
+redist_smc(map_nc, 10)
+```
+As you can see, all the `total_pop` should be within between 741,942 and 749,399, which is `r 100*get_pop_tol(map_nc)`% of population equality.
+
+Then, let's change the population tolerance with `set_pop_tol()` function. Here, we will set `pop_tol` into 0.05 (5%).
+```{r}
+map_nc_constr <- set_pop_tol(map_nc, 0.05)
+redist_smc(map_nc_constr, 10)
+```
+Now, as the population tolerance changes, the possible range of `total_pop` expanded between 708,387 and 782,954. 
+
+#### Fewer County Splits
+We can also add a soft constraints to the simulation. 
+Here, we will try to add a constraint that prefers the fewer county splits by creating `redist_constr` object.
+```{r}
+constr <- redist_constr(map_nc_constr)
+constr <- add_constr_splits(constr, strength = 1.5, admin = county)
+smc_plans_constr <- redist_smc(map = map_nc,
+                               nsims = 500,
+                               constraints = constr)
+```
+
+### `redist_plans` output
+Changing the constraints means changing the output sample of the simulations. 
+Although we are going to explain in detail how to evaluate and analyze the simulation output with certain measures, here let’s see how the constraints changed the population deviation of the simulation outcome.
+```{r fig.show="hold", out.width="50%", fig.align='center'}
+# original constraints
+group_by(smc_plans_basic, draw) %>%
+  summarize(pop_dev = max(abs(total_pop/mean(total_pop) - 1))) %>%
+  redist.plot.hist(pop_dev, bins = 10) +
+  xlim(c(0.003, 0.0055))
+
+# customized constraints
+group_by(smc_plans_constr, draw) %>%
+  summarize(pop_dev = max(abs(total_pop/mean(total_pop) - 1))) %>%
+  redist.plot.hist(pop_dev, bins = 10) +
+  xlim(c(0.003, 0.0055))
+```
+
