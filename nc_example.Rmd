@@ -16,11 +16,15 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(alarmdata)
 library(redist)
+library(geomander)
+library(here)
+library(sf)
 ```
 
 # Download Simulation Data
 
-We can access data from all 50 states in the US using `alarmdata`. Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans` downloads the 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
+We can access data from all 50 states in the US using `alarmdata`. 
+Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map()` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans()` downloads the 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
 
 ```{r}
 data_nc <- alarm_census_vest("NC")
@@ -28,28 +32,25 @@ map_nc <- alarm_50state_map("NC")
 plans_nc <- alarm_50state_plans("NC")
 ```
 
-If you are curious how these plans were generated, the code is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020). 
+The code for how these plans were generated is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020).
 
-Specifically in North Carolina, districts must:
-1. be contiguous
-2. have equal populations
-3. be geographically compact
-4. preserve county boundaries as much as possible
-Each of these redistricting requirements, in addition to the 1965 Voting Rights Act, were closely followed when conducting the simulations.
+Specifically in North Carolina, districts must: 
+1. be contiguous 
+2. have equal populations 
+3. be geographically compact 
+4. preserve county boundaries as much as possible 
+Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
 
-The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. However, analysts might want to compare other custom plans to the 50-State simulations. This can be done with `alarm_add_plan()`. The following example adds the 2010 enacted plan for North Carolina as a reference plan to the `plans_nc` object.
-```{r}
-# error - 2010 plan has 13 districts, 2020 plan has 14
-# plans_nc %>% alarm_add_plan(plans_nc, ref_plan = map_nc$cd_2010, map_nc, name = "cd_2010")
-```
+# Visualization & Analysis
 
-We can plot some of these plans to visualize the geographical boundaries of the simulated districts.
+We can plot some of the simulated plans to visualize the geographical boundaries of the simulated districts.
 
 ```{r}
 redist.plot.plans(plans_nc, draws=1:4, shp=map_nc)
 ```
 
-We can use `comp_edge` to measure the compactness of entire plans, and we can use `comp_polsby` to measure the compactness of individual districts across plans. 
+We can use `comp_edge` to visualize the compactness of entire plans. 
+Another option is to use `comp_polsby` to display the compactness of individual districts across plans.
 
 ```{r}
 redist.plot.hist(plans_nc, qty = comp_edge) +
@@ -57,8 +58,8 @@ redist.plot.hist(plans_nc, qty = comp_edge) +
   theme_bw()
 ```
 
-
-We can also compare distributions of a certain summary statistic across districts. The following code plots the distribution of democratic percentage of each district for all simulations.
+We can also compare distributions of different summary statistics across districts. 
+The following code plots the distribution of democratic percentage of each district for all simulations.
 
 ```{r}
 redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20_rep_tru), geom = "boxplot") +
@@ -66,3 +67,32 @@ redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20
   theme_bw()
 ```
 
+The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. 
+However, analysts might want to compare other custom plans to the 50-State simulations. 
+This can be done with `alarm_add_plan()`. 
+The following example adds one of the previously proposed 2020 congressional maps for North Carolina as a reference plan to the `plans_nc` object. 
+Many submitted maps are publicly available online on sites such as [Redistricting Data Hub](https://redistrictingdatahub.org/data/download-data/#state-menu), [All About Redistricting](https://redistricting.lls.edu/mapdownload/), or state government websites. 
+The North Carolina enacted and proposed maps came from the [North Carolina General Assembly](https://www.ncleg.gov/Redistricting).
+
+```{r}
+# Download plan from 50-state data
+dir.create("plans")
+path_enacted <- here("plans", "SL 2021-174 Congress.shp")
+if (!file.exists(path_enacted)) {
+    url <- "https://s3.amazonaws.com/dl.ncsbe.gov/ShapeFiles/USCongress/2021-11-04%20US_Congress_SL_2021-174.zip"
+    download.file(url, paste0(dirname(path_enacted), "/nc.zip"))
+    unzip(paste0(dirname(path_enacted), "/nc.zip"), exdir = dirname(path_enacted))
+}
+
+# Add plan to redist_map
+dists <- read_sf(path_enacted)
+dists <- st_transform(dists, st_crs(map_nc))
+map_nc$cd_2020_ex <- as.integer(dists$DISTRICT)[geo_match(from = map_nc, to = dists, method = "area")]
+
+# Add plan as reference using `alarm_add_plan()`
+plans_nc <- plans_nc %>%
+  alarm_add_plan(ref_plan=map_nc$cd_2020_ex, map_nc, name = "cd_2020_ex")
+
+# Conduct analysis - county split comparison
+hist(plans_nc, county_splits) + labs(title = "County splits") + theme_bw()
+```
