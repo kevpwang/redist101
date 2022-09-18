@@ -61,9 +61,6 @@ plot(map_nc, adj=TRUE)
 
 You may need to (fix the adjacency list manually)] with [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are islands connected with bridge. 
 
-## Adding reference plans 
-??? 
-
 ## Further Pre-processing
 Often, we want to only analyze a portion of a map, or hold some districts fixed while others are re-simulated. We may also want to implement a status-quo-type constraint that encourages simulated districts to be close to a reference plan. This can be accomplished by freezing the “cores” of each district.
 
