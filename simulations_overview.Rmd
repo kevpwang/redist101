@@ -1,0 +1,48 @@
+---
+title: "Using Algorithms to Detect Gerrymandering"
+author: "Kento Yamada"
+date: '2022-09-21'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Why Simulate?
+
+When detecting gerrymandering, we are trying to determine whether a certain district map is unfair. The problem here is that it is unclear what we are comparing the map to. What makes a map unfair, and how do we identify whether a map is unfair? 
+
+The key challenge is to construct a counterfactual. We want to compare the map under question to a set of alternative redistricting plans that are made following the same rules as the ones used in the actual redistricting process.
+
+One potential solution is to list up all possible plans. Unfortunately, this is impossible in most cases because the number of potential plans tends to be astronomically large. Even under a simple scenario where an 8 by 8 checkerboard is split into two contiguous districts, the total number of unique plans amounts to over $1.2 \times 10^{11}$ (Fifield et al., 2020). In real-world redistricting problems, we often deal with thousands of administrative units. Thus, enumerating all potential plans is unrealistic.
+
+Another idea might be to compare the plan under question to plans adopted in other states or to plans that were used in the same state in the past. This again is unfeasible because the geographical distributions of voters differ across different states and different time periods. Also, each state has its own rules regarding redistricting, and it is not justifiable to compare plans that were drawn under different rules (Kenny et al., 2022).
+
+Therefore, we would want to sample plans that follow the same rules used in the real redistricting process and that are based on the real distribution of voters in the same state, in the same time period.
+
+Simulations make this possible. Using simulations, we can obtain a representative sample of redistricting plans that follow the constraints that are used in the actual redistricting process such as:
+
+* Contiguity (Making sure that districts are contiguous)
+* Population parity (Making sure that districts have equal population)
+* Limiting administrative boundary splits
+
+Typically, we draw a few thousand plans in each state, making sure that the plans are unique and that the sample is representative. Then, we compare the simulated plans with the enacted/proposed map to see whether, for example, the map under question disproportionately favors one group over another. For a more intuitive explanation of simulations, check out this Washington Post article titled ["Can computer simulations help fix democracy?"](https://www.washingtonpost.com/politics/interactive/2022/algorithmic-redistricting/) 
+
+# Evaluating Plans
+
+After we obtain a representative sample of redistricting plans, we can detect whether the map under question was gerrymandered by comparing the map with the simulated plans. `redist` and its associated packages are equipped with tools that allow you to conduct and visualize such analysis. The metrics used in such analysis include:
+
+* The number of seats that each party is expected to win under the enacted/proposed plan and the simulated plans
+* The two-party vote margin in each district, which is useful when trying to identify whether specific groups of voters have been packed into a small number of districts or splintered into numerous districts
+* The efficiency gap, which represents the degree to which the votes cast for each party are wasted
+* The partisan bias of plans, which quantifies the excess seat share per party relative to the party’s vote share
+
+We can conclude that there is evidence of gerrymandering if the map under question is a clear outlier relative to the simulated plans. Check out how we conduct these types of analysis in our [50-State Simulation Project](https://alarm-redist.org/fifty-states/about/).
+
+# References
+Fifield, B., Imai, K., Kawahara, J., & Kenny, C. T. (2020). The Essential Role of Empirical Validation in Legislative Redistricting Simulation. *Statistics and Public Policy, 7*(1), 52–68. https://doi.org/10.1080/2330443X.2020.1791773
+
+Kenny, C. T., McCartan, C., Simko, T., Kuriwaki, S., & Imai, K. (2022). Widespread Partisan Gerrymandering Mostly Cancels Nationally, but Reduces Electoral Competition. https://doi.org/10.48550/ARXIV.2208.06968
