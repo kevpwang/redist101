@@ -23,8 +23,7 @@ library(sf)
 
 # Download Simulation Data
 
-We can access data from all 50 states in the US using `alarmdata`. 
-Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map()` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans()` downloads the 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
+We can access data from all 50 states in the US using `alarmdata`. Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map()` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans()` downloads the 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
 
 ```{r}
 data_nc <- alarm_census_vest("NC")
@@ -34,12 +33,7 @@ plans_nc <- alarm_50state_plans("NC")
 
 The code for how these plans were generated is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020).
 
-Specifically in North Carolina, districts must: 
-1. be contiguous 
-2. have equal populations 
-3. be geographically compact 
-4. preserve county boundaries as much as possible 
-Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
+Specifically in North Carolina, districts must: 1. be contiguous 2. have equal populations 3. be geographically compact 4. preserve county boundaries as much as possible Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
 
 # Visualization & Analysis
 
@@ -49,8 +43,15 @@ We can plot some of the simulated plans to visualize the geographical boundaries
 redist.plot.plans(plans_nc, draws=1:4, shp=map_nc)
 ```
 
-We can use `comp_edge` to visualize the compactness of entire plans. 
-Another option is to use `comp_polsby` to display the compactness of individual districts across plans.
+We can also plot the VI distance of each plan, which measures how different the simulated plans are from one another. In the following plot, the VI distances are mostly within the range 0.5-1.0, which means that the simulated plans include a diverse set of geographical arrangements.
+
+```{r}
+plan_div <- plans_diversity(plans_nc, n_max = 150)
+qplot(plan_div, bins = I(40), xlab = "VI distance", main = "Plan diversity") + theme_bw()
+```
+
+
+We can also visualize the compactness of entire plans. The following plot shows that the compactness of the NC 2020 enacted plan is within the mid-upper range of the simulated plans, suggesting that the plans were constructed with appropriate compactness considerations.
 
 ```{r}
 redist.plot.hist(plans_nc, qty = comp_edge) +
@@ -58,21 +59,7 @@ redist.plot.hist(plans_nc, qty = comp_edge) +
   theme_bw()
 ```
 
-We can also compare distributions of different summary statistics across districts. 
-The following code plots the distribution of democratic percentage of each district for all simulations.
-
-```{r}
-redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20_rep_tru), geom = "boxplot") +
-  labs(y = "2020 Presidential Democratic Vote Percentage") +
-  theme_bw()
-```
-
-The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. 
-However, analysts might want to compare other custom plans to the 50-State simulations. 
-This can be done with `alarm_add_plan()`. 
-The following example adds one of the previously proposed 2020 congressional maps for North Carolina as a reference plan to the `plans_nc` object. 
-Many submitted maps are publicly available online on sites such as [Redistricting Data Hub](https://redistrictingdatahub.org/data/download-data/#state-menu), [All About Redistricting](https://redistricting.lls.edu/mapdownload/), or state government websites. 
-The North Carolina enacted and proposed maps came from the [North Carolina General Assembly](https://www.ncleg.gov/Redistricting).
+The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. However, analysts might want to compare other custom plans to the 50-State simulations. This can be done with `alarm_add_plan()`. The following example adds one of the previously proposed 2020 congressional maps for North Carolina as a reference plan to the `plans_nc` object. Many submitted maps are publicly available online on sites such as [Redistricting Data Hub](https://redistrictingdatahub.org/data/download-data/#state-menu), [All About Redistricting](https://redistricting.lls.edu/mapdownload/), or state government websites. The North Carolina enacted and proposed maps came from the [North Carolina General Assembly](https://www.ncleg.gov/Redistricting).
 
 ```{r}
 # Download plan from 50-state data
@@ -92,7 +79,29 @@ map_nc$cd_2020_ex <- as.integer(dists$DISTRICT)[geo_match(from = map_nc, to = di
 # Add plan as reference using `alarm_add_plan()`
 plans_nc <- plans_nc %>%
   alarm_add_plan(ref_plan=map_nc$cd_2020_ex, map_nc, name = "cd_2020_ex")
+```
 
+After the old reference plan has been added, we can compare the simulation statistics to both the previously proposed plan, labeled `cd_2020_ex`, and the currently enacted plan, labeled `cd_2020`. The following code plots the number of county splits, and we can see that the current plan actually splits more counties than the previous plan.
+
+```{r}
 # Conduct analysis - county split comparison
 hist(plans_nc, county_splits) + labs(title = "County splits") + theme_bw()
 ```
+
+We can compare distributions of different summary statistics across districts. The following boxplots display the distribution of Democratic vote percentage across each district. This plot shows that there are more majority-Democratic districts in the current plan than in the previously ratified plan, due to less packing of voters.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20_rep_tru), geom = "boxplot") +
+  labs(y = "2020 Presidential Democratic Vote Percentage") +
+  theme_bw()
+```
+
+Similarly, we can visualize the minority voting age population (VAP) percentage in each district. This plot shows that voters are less packed in the highest MVAP districts, leading to more opportunity districts.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = (total_vap - vap_white) / (total_vap), geom = "jitter") +
+  labs(y = "2020 Minority VAP Percentage") +
+  theme_bw()
+```
+
+
