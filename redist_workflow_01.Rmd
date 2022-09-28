@@ -109,7 +109,7 @@ Thus, we need to customize the constraints to operationalize legal requirements 
 For example, in some cases, each district has to have an equal population, while the margins of tolerance exist, which can be varied by the state. To adjust to that rule, we can customize the constraints as you can see below. 
 In `redist`, you can add both *hard* and *soft* constraints.
 
-### Hard Constraits
+### Hard Constraints
 * Population Tolerance (`pop_tol`= 0.0x) -- all plans must be within x% of population equality.
 * Contiguity -- all plans must be contiguous 
 * County splits -- all plans must have up to a small number of splits
