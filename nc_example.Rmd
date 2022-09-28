@@ -50,7 +50,6 @@ plan_div <- plans_diversity(plans_nc, n_max = 150)
 qplot(plan_div, bins = I(40), xlab = "VI distance", main = "Plan diversity") + theme_bw()
 ```
 
-
 We can also visualize the compactness of entire plans. The following plot shows that the compactness of the NC 2020 enacted plan is within the mid-upper range of the simulated plans, suggesting that the plans were constructed with appropriate compactness considerations.
 
 ```{r}
@@ -104,4 +103,4 @@ redist.plot.distr_qtys(plans_nc, qty = (total_vap - vap_white) / (total_vap), ge
   theme_bw()
 ```
 
-
+Overall, although the newly enacted plan split more counties than the previously proposed plan, the partisan and demographic metrics of the current plan are not among the far outliers of the simulation diagnostics, suggesting that the current plan is a more representative configuration given the specific redistricting requirements in North Carolina.
