@@ -82,7 +82,7 @@ validate_analysis(plans_nc, map_nc)
 The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. However, analysts might want to compare other custom plans to the 50-State simulations. This can be done with `alarm_add_plan()`. The following example adds one of the previously proposed 2020 congressional maps for North Carolina as a reference plan to the `plans_nc` object. Many submitted maps are publicly available online on sites such as [Redistricting Data Hub](https://redistrictingdatahub.org/data/download-data/#state-menu), [All About Redistricting](https://redistricting.lls.edu/mapdownload/), or state government websites. The North Carolina enacted and proposed maps came from the [North Carolina General Assembly](https://www.ncleg.gov/Redistricting).
 
 ```{r}
-# Download plan from 50-state data
+# Download plan from NC General Assembly
 dir.create("plans")
 path_enacted <- here("plans", "SL 2021-174 Congress.shp")
 if (!file.exists(path_enacted)) {
