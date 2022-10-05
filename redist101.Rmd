@@ -8,10 +8,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-_"There are only a handful of college professors who have the expertise to run [redistricting] simulations in the first place."_<br>
-<div align="right">--lawyer from oral arguments in [_Merrill v. Milligan_](https://www.scotusblog.com/case-files/cases/merrill-v-milligan-2/)</div>
+<br>
+_"There are a handful of college professors who even have the expertise to run [redistricting] simulations in the first place."_
+<br>
+<div align="right">---lawyer from oral arguments before the Supreme Court in [_Merrill v. Milligan_](https://www.scotusblog.com/case-files/cases/merrill-v-milligan-2/)</div>
+<br>
 
-# Why Simulate?
+This vignette introduces
+
+## Evaluating a redistricting plan
+
+### Why Simulate?
 
 When attempting to detect gerrymandering, we want to determine whether a certain district map is unfair. But what makes a map unfair, and how do we identify whether a map is unfair? The problem is that it is not obvious what standard to which we should compare an existing map.
 
@@ -31,7 +38,7 @@ Simulations make this possible. Using simulations, we can obtain a representativ
 
 Typically, we draw a few thousand plans in each state, making sure that the plans are unique and that the sample is representative. Then, we compare the simulated plans with the enacted/proposed map to see whether, for example, the map under question disproportionately favors one group over another. For a more intuitive explanation of simulations, check out this Washington Post article titled ["Can computer simulations help fix democracy?"](https://www.washingtonpost.com/politics/interactive/2022/algorithmic-redistricting/) 
 
-# Evaluating Plans
+### Evaluating Plans
 
 After we obtain a representative sample of redistricting plans, we can detect whether the map under question was gerrymandered by comparing the map with the simulated plans. `redist` and its associated packages are equipped with tools that allow you to conduct and visualize such analysis. The metrics used in such analysis include:
 
@@ -42,7 +49,9 @@ After we obtain a representative sample of redistricting plans, we can detect wh
 
 We can conclude that there is evidence of gerrymandering if the map under question is a clear outlier relative to the simulated plans. Check out how we conduct these types of analysis in our [50-State Simulation Project](https://alarm-redist.org/fifty-states/about/).
 
-# References
+### References and Further Reading
 Fifield, B., Imai, K., Kawahara, J., & Kenny, C. T. (2020). The Essential Role of Empirical Validation in Legislative Redistricting Simulation. *Statistics and Public Policy, 7*(1), 52–68. https://doi.org/10.1080/2330443X.2020.1791773
 
 Kenny, C. T., McCartan, C., Simko, T., Kuriwaki, S., & Imai, K. (2022). Widespread Partisan Gerrymandering Mostly Cancels Nationally, but Reduces Electoral Competition. https://doi.org/10.48550/ARXIV.2208.06968
+
+
