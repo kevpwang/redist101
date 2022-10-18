@@ -14,9 +14,9 @@ _"There are a handful of college professors who even have the expertise to run [
 <div align="right">---lawyer from oral arguments before the Supreme Court in [_Merrill v. Milligan_](https://www.scotusblog.com/case-files/cases/merrill-v-milligan-2/)</div>
 <br>
 
-This vignette introduces
+This vignette introduces 
 
-## Evaluating a redistricting plan
+## Overview
 
 ### Why Simulate?
 
@@ -54,4 +54,286 @@ Fifield, B., Imai, K., Kawahara, J., & Kenny, C. T. (2020). The Essential Role o
 
 Kenny, C. T., McCartan, C., Simko, T., Kuriwaki, S., & Imai, K. (2022). Widespread Partisan Gerrymandering Mostly Cancels Nationally, but Reduces Electoral Competition. https://doi.org/10.48550/ARXIV.2208.06968
 
+## Redistricting Simulation Workflow
 
+```{r}
+library(tidyverse)
+library(alarmdata)
+library(redist)
+```
+
+## Overview of building data objects
+
+### `redist_map` 
+The first step one in a `redist` analysis is creating the `redist_map` object, which stores the basic parameters of the redistricting problem. 
+Here, we use the `redist_map` objects that can be downloaded from `alarmdata` package.
+```{r message=FALSE}
+map_nc <- alarm_50state_map("NC")
+print(map_nc)
+```
+As it shows above, `redist_map` (and shapefiles) looks like an dataframe with many columns, such as populations and geographical information. 
+
+For example, the `geometry` column contains the geographic shapefile information, which can be mapped as `POLYGON` (or `MULTIPOLYGON`) shape of the geographical area. 
+
+```{r}
+head(map_nc$geometry)
+```
+
+### Shapefiles and Projections
+If you want to use the other shapefile data for the redistricting analysis (other countries, etc.), you need to transform the available shapefiles (census data, etc.) into the `redist_map` objects using [`redist_map()` function](https://alarm-redist.org/redist/reference/redist_map.html). 
+
+As there are multiple formats of [shapefiles](https://r-spatial.github.io/sf/), you may also need to convert and adjust them into a unified format. 
+For example, projections must be in the same style. For more information, check pp.17-18 of [this presentation for the workshop](https://docs.google.com/presentation/d/1FlTfDv8sjhDxxU2KIOnKd1SHhvivm7WdD0bYdrNNgo0/edit#slide=id.g11d65f9e588_0_0). 
+
+### Adjacency List
+Since the legislative district plans are generally required to be contiguous, all the `redist` simulation algorithms operate on an *adjacency graph*, which is constructed from the actual precinct or county geography.
+
+What is adjacency? -- It is the formalization of contiguity. 
+
+Then, what does contiguity means? -- Two units are adjacent if they are contiguous geographically. 
+
+Let’s check what the adjacency list looks like.
+The `adj` column of `redist_map` is the adjacency list. 
+
+```{r}
+head(map_nc$adj)
+```
+
+As you can see, the adjacency list shows that the area (row-wise) is adjacent/contiguous to which areas. 
+
+With the `redist_map` object, we can plot this adjacency list. 
+```{r}
+plot(map_nc, adj=TRUE)
+```
+
+You may need to (fix the adjacency list manually)] with [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are islands connected with bridge. 
+
+### Further Pre-processing
+Often, we want to only analyze a portion of a map, or hold some districts fixed while others are re-simulated. We may also want to implement a status-quo-type constraint that encourages simulated districts to be close to a reference plan. This can be accomplished by freezing the “cores” of each district.
+
+All of these operations fall under the umbrella of map pre-processing, and `redist` is well-equipped to handle them.  
+
+The map [pre-processing vignette](https://alarm-redist.org/redist/articles/map-preproc.html) contains more information and examples about these operations.
+
+
+## Simulating redistricting plans
+
+### Sampling Algorithms
+As discussed above, we want to create counterfactual plans by obtaining a representative sample with the algorithms. 
+The `redist` package has three functions that use Sequential Monte Simulations (`redist_smc`) and Markov Chain Monte Carlo (`redist_flip` and `redist_mergesplit`) algorithms.
+In this section, we will pick up `redist_smc`, which generates nearly independent congressional or legislative redistricting plans according to contiguity, population, compactness, and administrative boundary constraints.
+For the details of the functions, check the following.
+
+* [`redist_smc`](https://alarm-redist.org/redist/reference/redist_smc.html)
+* [`redist_flip`](https://alarm-redist.org/redist/reference/redist_flip.html) and 
+*[`redist_mergesplit`](https://alarm-redist.org/redist/reference/redist_mergesplit.html) 
+
+### `redist_smc`
+Once the `redist_map` is ready, we can run the simple simulations. 
+Here, let's try generating five hundred simulated plans for North Carolina. Note that we can ask `redist_smc` to produce five hundred plans by combining two separate simulation runs. This ensures that the algorithm "converges"--that is, that the distribution of plans we obtain is stable.
+
+```{r}
+smc_plans_basic <- redist_smc(map_nc, nsims = 250, runs = 2L) %>% 
+  mutate(plan_dev = plan_parity(map_nc),
+         comp_edge = distr_compactness(map_nc),
+         county_splits = county_splits(map_nc, map_nc$county),
+         e_dvs = partisan_metrics(map_nc, "DVS", nrv, ndv))
+```
+
+Now, you have got 500 plans. The output of the simulations is `redist_plans` format. The followings are the first six plans generated by the simulations, and you can plot them. 
+
+```{r}
+redist.plot.plans(smc_plans_basic, draws=1:6, shp=map_nc)
+```
+
+Using the `summary` function, we can perform a diagnostic check to ensure that our plans have converged and are diverse (in other words, that we are exploring a sufficient space of possible alternative plans, rather than simulating the same plan over and over again).
+
+```{r}
+summary(smc_plans_basic)
+```
+
+### Constraints
+
+The simulation output from the SMC is unbiased random sample, but not always mean representative.
+Since each state (or equivalent) has a different legal requirements for the redistricting plan, representative sample has to be in the resemble the space of legal possibilities. 
+Thus, we need to customize the constraints to operationalize legal requirements and norms. 
+For example, in some cases, each district has to have an equal population, while the margins of tolerance exist, which can be varied by the state. To adjust to that rule, we can customize the constraints as you can see below. 
+In `redist`, you can add both *hard* and *soft* constraints.
+
+#### Hard Constraints
+* Population Tolerance (`pop_tol`= 0.0x) -- all plans must be within x% of population equality.
+* Contiguity -- all plans must be contiguous 
+* County splits -- all plans must have up to a small number of splits
+
+#### Soft Constraints
+* `redist` allows you to add soft constraints that are listed [here](https://alarm-redist.org/redist/reference/constraints.html). 
+* Using [`add_constr_xyz()`](https://alarm-redist.org/redist/reference/constraints.html) (`xyz` varies depending on the constraints you want to add) functions, you can add constraints on the redistricting process to be encoded in the target distribution for sampling of `redist_smc()` and `redist_mergesplit()`. 
+* Note that higher and higher strength values will eventually cause the algorithm's accuracy and efficiency to suffer. Whenever you use constraints, be sure to check all sampling diagnostics.
+  
+### Example
+#### Change Population Tolerance
+You can use `get_pop_tol()` function to check the current population tolerance of `redist_map` object.
+
+```{r}
+get_pop_tol(map_nc)
+```
+As you can see above, the population tolerance of `map_nc` is `r get_pop_tol(map_nc)`.
+This means that all plans must be within `r 100*get_pop_tol(map_nc)`% of population equality.
+This is why you can see the output message of `redist_smc()` shows following.
+```{r}
+redist_smc(map_nc, 10)
+```
+As you can see, all the `total_pop` should be within between 741,942 and 749,399, which is `r 100*get_pop_tol(map_nc)`% of population equality.
+
+Then, let's change the population tolerance with `set_pop_tol()` function. Here, we will set `pop_tol` into 0.05 (5%).
+```{r}
+map_nc_constr <- set_pop_tol(map_nc, 0.05)
+redist_smc(map_nc_constr, 10)
+```
+Now, as the population tolerance changes, the possible range of `total_pop` expanded between 708,387 and 782,954. 
+
+#### Fewer County Splits
+We can also add a soft constraints to the simulation. 
+Here, we will try to add a constraint that prefers the fewer county splits by creating `redist_constr` object.
+```{r}
+constr <- redist_constr(map_nc_constr)
+constr <- add_constr_splits(constr, strength = 1.5, admin = county)
+smc_plans_constr <- redist_smc(map = map_nc,
+                               nsims = 500,
+                               constraints = constr)
+```
+
+### `redist_plans` output
+Changing the constraints means changing the output sample of the simulations. 
+Although we are going to explain in detail how to evaluate and analyze the simulation output with certain measures, here let’s see how the constraints changed the population deviation of the simulation outcome.
+```{r fig.show="hold", out.width="50%", fig.align='center'}
+# original constraints
+group_by(smc_plans_basic, draw) %>%
+  summarize(pop_dev = max(abs(total_pop/mean(total_pop) - 1))) %>%
+  redist.plot.hist(pop_dev, bins = 10) +
+  xlim(c(0.003, 0.0055))
+
+# customized constraints
+group_by(smc_plans_constr, draw) %>%
+  summarize(pop_dev = max(abs(total_pop/mean(total_pop) - 1))) %>%
+  redist.plot.hist(pop_dev, bins = 10) +
+  xlim(c(0.003, 0.0055))
+```
+
+# Setup
+
+First, we load the required packages for analysis. If the packages are not installed yet, be sure to do so beforehand.
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(alarmdata)
+library(redist)
+library(geomander)
+library(here)
+library(sf)
+```
+
+# Download Simulation Data
+
+We can access data from all 50 states in the US using the `alarmdata` package. Here, we use North Carolina as an example: `alarm_census_vest()` downloads geographic, demographic, and election data, `alarm_50state_map()` loads the `redist_map` object that contains precinct geometries and adjacencies, and `alarm_50state_plans()` downloads the `redist_plans` object that contains 5000 pre-simulated redistricting plans from the [50-State Redistricting Simulations](https://doi.org/10.48550/arXiv.2206.10763).
+
+```{r}
+data_nc <- alarm_census_vest("NC")
+map_nc <- alarm_50state_map("NC")
+plans_nc <- alarm_50state_plans("NC")
+```
+
+The code for how these plans were generated is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020).
+
+Specifically in North Carolina, districts must: 1) be contiguous, 2) have equal populations, 3) be geographically compact, 4) preserve county boundaries as much as possible. Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
+
+# Visualization & Analysis
+
+We can plot some of the simulated plans to visualize the geographical boundaries of the simulated districts.
+
+```{r}
+redist.plot.plans(plans_nc, draws=1:4, shp=map_nc)
+```
+
+We can also plot the VI distance of each plan, which measures how different the simulated plans are from one another. In the following plot, the VI distances are mostly within the range 0.5-1.0, which means that the simulated plans include a diverse set of geographical arrangements.
+
+```{r}
+plan_div <- plans_diversity(plans_nc, n_max = 150)
+qplot(plan_div, bins = I(40), xlab = "VI distance", main = "Plan diversity") + theme_bw()
+```
+
+We can also visualize the compactness of entire plans. The following plot shows the compactness of the simulated plans at the plan level, using the Fraction of Edges Kept measure. The compactness of the NC 2020 enacted plan is within the mid-upper range of the simulated plans, suggesting that the plans were constructed with appropriate compactness considerations.
+
+```{r}
+redist.plot.hist(plans_nc, qty = comp_edge) +
+  labs(x = "Fraction of Edges Kept", y = "Percentage of Plans") +
+  theme_bw()
+```
+
+The following plot displays the distribution of compactness across the simulated plans at the district level, using the Polsby-Popper compactness measure.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = comp_polsby, geom = "boxplot") +
+  labs(y = "Compactness: Polsby-Popper") +
+  theme_bw()
+```
+
+To evaluate the performance of the simulations, we can use `summary(plans)` to check for any bottlenecks or efficiency losses. Be sure to check that all R-hat values are below 1.05 and that the SMC runs have converged. For NC, 2 runs of 10,000 simulations is the typical size needed for convergence.
+
+```{r}
+summary(plans_nc)
+```
+
+We can also run `validate_analysis(plans, map)` to generate a set of useful simulation visualizations.
+
+```{r}
+# need to load
+validate_analysis(plans_nc, map_nc)
+```
+
+The 50-State `redist_plans` objects include data for the 2020 enacted districting plans. However, analysts might want to compare other custom plans to the 50-State simulations. This can be done with `alarm_add_plan()`. The following example adds one of the previously proposed 2020 congressional maps for North Carolina as a reference plan to the `plans_nc` object. Many submitted maps are publicly available online on sites such as [Redistricting Data Hub](https://redistrictingdatahub.org/data/download-data/#state-menu), [All About Redistricting](https://redistricting.lls.edu/mapdownload/), or state government websites. The North Carolina enacted and proposed maps came from the [North Carolina General Assembly](https://www.ncleg.gov/Redistricting).
+
+```{r}
+# Download plan from NC General Assembly
+dir.create("plans")
+path_enacted <- here("plans", "SL 2021-174 Congress.shp")
+if (!file.exists(path_enacted)) {
+    url <- "https://s3.amazonaws.com/dl.ncsbe.gov/ShapeFiles/USCongress/2021-11-04%20US_Congress_SL_2021-174.zip"
+    download.file(url, paste0(dirname(path_enacted), "/nc.zip"))
+    unzip(paste0(dirname(path_enacted), "/nc.zip"), exdir = dirname(path_enacted))
+}
+
+# Add plan to redist_map
+dists <- read_sf(path_enacted)
+dists <- st_transform(dists, st_crs(map_nc))
+map_nc$cd_2020_ex <- as.integer(dists$DISTRICT)[geo_match(from = map_nc, to = dists, method = "area")]
+
+# Add plan as reference using `alarm_add_plan()`
+plans_nc <- plans_nc %>%
+  alarm_add_plan(ref_plan=map_nc$cd_2020_ex, map_nc, name = "cd_2020_ex")
+```
+
+After the old reference plan has been added, we can compare the simulation statistics to both the previously proposed plan, labeled `cd_2020_ex`, and the currently enacted plan, labeled `cd_2020`. The following code plots the number of county splits, and we can see that the current plan actually splits more counties than the previous plan.
+
+```{r}
+hist(plans_nc, county_splits) + labs(title = "County splits") + theme_bw()
+```
+
+We can compare distributions of different summary statistics across districts. The following boxplots display the distribution of Democratic vote percentage across each district. This plot shows that there are more majority-Democratic districts in the current plan than in the previously ratified plan, due to less packing of voters.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = pre_20_dem_bid / (pre_20_dem_bid + pre_20_rep_tru), geom = "boxplot") +
+  labs(y = "2020 Presidential Democratic Vote Percentage") +
+  theme_bw()
+```
+
+Similarly, we can visualize the minority voting age population (VAP) percentage in each district. This plot shows that voters are less packed in the highest MVAP districts, leading to more opportunity districts.
+
+```{r}
+redist.plot.distr_qtys(plans_nc, qty = (total_vap - vap_white) / (total_vap), geom = "jitter") +
+  labs(y = "2020 Minority VAP Percentage") +
+  theme_bw()
+```
+
+Overall, although the newly enacted plan split more counties than the previously proposed plan, the partisan and demographic metrics of the current plan are not among the far outliers of the simulation diagnostics, suggesting that the current plan is a more representative configuration given the specific redistricting requirements in North Carolina.
