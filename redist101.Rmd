@@ -236,7 +236,7 @@ We will now demonstrate an example of redistricting analysis using the simulated
 
 First, we load the required packages for analysis. If the packages are not installed yet, be sure to do so beforehand.
 
-```{r setup, include=TRUE}
+```{r, include=TRUE}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(alarmdata)
@@ -244,6 +244,8 @@ library(redist)
 library(geomander)
 library(here)
 library(sf)
+
+source("validate.R")
 ```
 
 ### Download Simulation Data
@@ -358,7 +360,6 @@ summary(plans_nc)
 We can also run `validate_analysis(plans, map)` to generate a set of useful simulation visualizations.
 
 ```{r}
-# need to load
 validate_analysis(plans_nc, map_nc)
 ```
 
