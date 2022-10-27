@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 
 <br>
 
-This vignette introduces redistricting analysis with algorithmic simulations--the state-of-art method to understand gerrymandering--using the `redist` package.
+This vignette introduces algorithmic redistricting analysis using the `redist` package. It also demonstrates the `alarmdata` package, which downloads ready-to-use redistricting data and simulations from the ALARM Project's [50-State Redistricting Simulations](https://alarm-redist.org/fifty-states/).
 
 ## Overview
 
@@ -69,7 +69,7 @@ library(redist)
 
 ### `redist_map`
 
-The first step in a `redist` analysis is to create the `redist_map` object, which stores the basic parameters of the redistricting problem. Here, we use `redist_map` objects that can be downloaded from the ALARM Project's [50-State Redistricting Simulations](https://alarm-redist.org/fifty-states/) using the `alarmdata` package.
+The first step in a `redist` analysis is to create the `redist_map` object, which stores the basic parameters of the redistricting problem. Here, we use `redist_map` objects that can be downloaded from the [50-State Redistricting Simulations](https://alarm-redist.org/fifty-states/) using the `alarmdata` package.
 
 ```{r message=FALSE}
 map_nc <- alarm_50state_map("NC")
