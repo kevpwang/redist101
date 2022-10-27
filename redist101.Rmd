@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 ```
 
 <br> *"There are a handful of college professors who even have the expertise to run [redistricting] simulations in the first place."* <br>
@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 <br>
 
-This vignette introduces you to the redistricting analysis with algorithmic simulations--the state-of-art method to understand gerrymandering--with our `redist` package.
+This vignette introduces redistricting analysis with algorithmic simulations--the state-of-art method to understand gerrymandering--using the `redist` package.
 
 ## Overview
 
@@ -65,20 +65,20 @@ library(alarmdata)
 library(redist)
 ```
 
-## Overview of building data objects
+## Building Data Objects
 
 ### `redist_map`
 
-The first step one in a `redist` analysis is creating the `redist_map` object, which stores the basic parameters of the redistricting problem. Here, we use the `redist_map` objects that can be downloaded from `alarmdata` package.
+The first step in a `redist` analysis is to create the `redist_map` object, which stores the basic parameters of the redistricting problem. Here, we use `redist_map` objects that can be downloaded from the ALARM Project's [50-State Redistricting Simulations](https://alarm-redist.org/fifty-states/) using the `alarmdata` package.
 
 ```{r message=FALSE}
 map_nc <- alarm_50state_map("NC")
 print(map_nc)
 ```
 
-As it shows above, `redist_map` (and shapefiles) looks like an dataframe with many columns, such as populations and geographical information.
+As shown above, `redist_map` (and shapefiles) looks like a dataframe with many columns, such as population and geographical information.
 
-For example, the `geometry` column contains the geographic shapefile information, which can be mapped as `POLYGON` (or `MULTIPOLYGON`) shape of the geographical area.
+For example, the `geometry` column contains the geographic shapefile information, which can be mapped as a `POLYGON` (or `MULTIPOLYGON`) shape of the geographical area.
 
 ```{r}
 head(map_nc$geometry)
@@ -92,11 +92,9 @@ As there are multiple formats of [shapefiles](https://r-spatial.github.io/sf/), 
 
 ### Adjacency List
 
-Since the legislative district plans are generally required to be contiguous, all the `redist` simulation algorithms operate on an *adjacency graph*, which is constructed from the actual precinct or county geography.
+Since districts are generally required to be contiguous, all `redist` algorithms require an *adjacency graph*, which is constructed from the geography of the actual precincts (or other redistricting unit).
 
-What is adjacency? -- It is the formalization of contiguity.
-
-Then, what does contiguity means? -- Two units are adjacent if they are contiguous geographically.
+What is adjacency? It is the formalization of contiguity. Two units are adjacent if they are contiguous geographically.
 
 Let's check what the adjacency list looks like. The `adj` column of `redist_map` is the adjacency list.
 
@@ -104,17 +102,17 @@ Let's check what the adjacency list looks like. The `adj` column of `redist_map`
 head(map_nc$adj)
 ```
 
-As you can see, the adjacency list shows that the area (row-wise) is adjacent/contiguous to which areas.
+As you can see, the adjacency list of each precinct contains all other precincts to which it is adjacent/with which it is contiguous.
 
-With the `redist_map` object, we can plot this adjacency list.
+Using the `redist_map` object, we can plot this adjacency list.
 
 ```{r}
 plot(map_nc, adj=TRUE)
 ```
 
-You may need to (fix the adjacency list manually)] with [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are islands connected with bridge.
+You may need to (fix the adjacency list manually)] with the [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are bodies of water or islands connected by bridges.
 
-### Further Pre-processing
+### Further Pre-Processing
 
 Often, we want to only analyze a portion of a map, or hold some districts fixed while others are re-simulated. We may also want to implement a status-quo-type constraint that encourages simulated districts to be close to a reference plan. This can be accomplished by freezing the "cores" of each district.
 
@@ -126,7 +124,7 @@ The map [pre-processing vignette](https://alarm-redist.org/redist/articles/map-p
 
 ### Sampling Algorithms
 
-As discussed above, we want to create counterfactual plans by obtaining a representative sample with the algorithms. The `redist` package has three functions that use Sequential Monte Simulations (`redist_smc`) and Markov Chain Monte Carlo (`redist_flip` and `redist_mergesplit`) algorithms. In this section, we will pick up `redist_smc`, which generates nearly independent congressional or legislative redistricting plans according to contiguity, population, compactness, and administrative boundary constraints. For the details of the functions, check the following.
+As discussed above, we want to create counterfactual plans by obtaining a representative sample with simulation algorithms. The `redist` package has three functions that use Sequential Monte Simulations (`redist_smc`) and Markov Chain Monte Carlo (`redist_flip` and `redist_mergesplit`) algorithms. In this section, we will pick up `redist_smc`, which generates nearly independent congressional or legislative redistricting plans according to contiguity, population, compactness, and administrative boundary constraints. For the details of the functions, check the following.
 
 -   [`redist_smc`](https://alarm-redist.org/redist/reference/redist_smc.html)
 -   [`redist_flip`](https://alarm-redist.org/redist/reference/redist_flip.html) and \*[`redist_mergesplit`](https://alarm-redist.org/redist/reference/redist_mergesplit.html)
@@ -210,7 +208,7 @@ smc_plans_constr <- redist_smc(map = map_nc,
                                constraints = constr)
 ```
 
-### `redist_plans` output
+### `redist_plans` Output
 
 Changing the constraints means changing the output sample of the simulations. Although we are going to explain in detail how to evaluate and analyze the simulation output with certain measures, here let's see how the constraints changed the population deviation of the simulation outcome.
 
