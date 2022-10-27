@@ -260,7 +260,12 @@ plans_nc <- alarm_50state_plans("NC")
 
 The code for how these plans were generated is available on the [50-State GitHub repository](https://github.com/alarm-redist/fifty-states/tree/main/analyses/NC_cd_2020).
 
-Specifically in North Carolina, districts must: 1) be contiguous, 2) have equal populations, 3) be geographically compact, 4) preserve county boundaries as much as possible. Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
+Specifically in North Carolina, districts must:
+1) be contiguous
+2) have equal populations
+3) be geographically compact
+4) preserve county boundaries as much as possible.
+Each of these redistricting requirements, in addition to compliance with the 1965 Voting Rights Act, were closely followed when conducting the simulations.
 
 ### Visualization
 
@@ -359,7 +364,7 @@ summary(plans_nc)
 
 We can also run `validate_analysis(plans, map)` to generate a set of useful simulation visualizations.
 
-```{r}
+```{r fig.height = 12, fig.width = 10}
 validate_analysis(plans_nc, map_nc)
 ```
 
