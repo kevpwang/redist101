@@ -16,6 +16,10 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 
 <br>
 
+```{r echo = FALSE}
+knitr::include_graphics("https://alarm-redist.org/fifty-states/AL_cd_2020/AL_cd_2020_files/figure-html5/enacted-samples-1.png")
+```
+
 This vignette introduces algorithmic redistricting analysis using the `redist` package. It also demonstrates the `alarmdata` package, which downloads ready-to-use redistricting data and simulations from the ALARM Project's [50-State Redistricting Simulations](https://alarm-redist.org/fifty-states/).
 
 ## Overview
@@ -28,7 +32,7 @@ The key challenge is constructing a counterfactual. We want to compare an existi
 
 One potential solution is to list all possible plans. Unfortunately, this is impossible in most cases because the number of potential plans tends to be astronomically large. Even under a simple scenario in which an 8-by-8 checkerboard is split into two contiguous districts, the number of unique plans totals over $1.2 \times 10^{11}$ (Fifield et al., 2020). In real-world redistricting problems, we often deal with thousands of administrative units. Thus, enumerating all potential plans is unrealistic.
 
-Another idea might be to compare the plan under question to plans adopted in other states, or to plans that were used in the same state in the past. This is, again, not feasible because the geographical distributions of voters differ across different states and different time periods. Moreover, each state follows its own rules for redistricting, and we cannot justify comparing plans that were drawn under different rules (Kenny et al., 2022).
+Another idea might be to compare the plan under question to plans adopted in other states, or to plans that were used in the same state in the past. This is, again, is a misleading approach because the geographical distributions of voters differ across different states and different time periods. Moreover, each state follows its own rules for redistricting, and we cannot justify comparing plans that were drawn under different rules (Kenny et al., 2022).
 
 Therefore, we would want to sample plans that follow the same rules used in the real redistricting process and that are based on the real distribution of voters in the same state, in the same time period.
 
@@ -38,7 +42,7 @@ Simulations make this possible. Using simulations, we can obtain a representativ
 -   Population parity (Making sure that districts have equal population)
 -   Limiting administrative boundary splits
 
-Typically, we draw a few thousand plans in each state, making sure that the plans are unique and that the sample is representative. Then, we compare the simulated plans with the enacted/proposed map to see whether, for example, the map under question disproportionately favors one group over another. For a more intuitive explanation of simulations, check out this Washington Post article titled ["Can computer simulations help fix democracy?"](https://www.washingtonpost.com/politics/interactive/2022/algorithmic-redistricting/)
+Typically, we draw a few thousand plans in each state, making sure that the plans are unique and that the sample is representative. Then, we compare the simulated plans with the enacted/proposed map to see whether, for example, the map under question disproportionately favors one group over another. For a more intuitive explanation of simulations, check out this Washington Post article titled ["Can computer simulations help fix democracy?"](https://www.washingtonpost.com/politics/interactive/2022/algorithmic-redistricting/). The article talks about how Prof. Kosuke Imai, head of the ALARM Project, served as an expert witness in a redistricting litigation in Ohio.
 
 ### Evaluating Plans
 
