@@ -41,6 +41,7 @@ Simulations make this possible. Using simulations, we can obtain a representativ
 -   Contiguity (Making sure that districts are contiguous)
 -   Population parity (Making sure that districts have equal population)
 -   Limiting administrative boundary splits
+-   Other idiosyncratic requirements, such as connecting counties by transportation links
 
 Typically, we draw a few thousand plans in each state, making sure that the plans are unique and that the sample is representative. Then, we compare the simulated plans with the enacted/proposed map to see whether, for example, the map under question disproportionately favors one group over another. For a more intuitive explanation of simulations, check out this Washington Post article titled ["Can computer simulations help fix democracy?"](https://www.washingtonpost.com/politics/interactive/2022/algorithmic-redistricting/). The article talks about how Prof. Kosuke Imai, head of the ALARM Project, served as an expert witness in a redistricting litigation in Ohio.
 
@@ -62,6 +63,8 @@ Fifield, B., Imai, K., Kawahara, J., & Kenny, C. T. (2020). The Essential Role o
 Kenny, C. T., McCartan, C., Simko, T., Kuriwaki, S., & Imai, K. (2022). Widespread Partisan Gerrymandering Mostly Cancels Nationally, but Reduces Electoral Competition. <https://doi.org/10.48550/ARXIV.2208.06968>
 
 ## Redistricting Simulation Workflow
+
+Before starting, we need to load the following packages, which contain the functions necessary to conduct the simulations.
 
 ```{r}
 library(tidyverse)
@@ -90,7 +93,7 @@ head(map_nc$geometry)
 
 ### Shapefiles and Projections
 
-If you want to use the other shapefile data for the redistricting analysis (other countries, etc.), you need to transform the available shapefiles (census data, etc.) into the `redist_map` objects using [`redist_map()` function](https://alarm-redist.org/redist/reference/redist_map.html).
+If you want to use the other shapefile data for the redistricting analysis (other countries, etc.), you need to transform the available shapefiles (census data, etc.) into a `redist_map` object.
 
 As there are multiple formats of [shapefiles](https://r-spatial.github.io/sf/), you may also need to convert and adjust them into a unified format. For example, projections must be in the same style. For more information, check pp.17-18 of [this presentation for the workshop](https://docs.google.com/presentation/d/1FlTfDv8sjhDxxU2KIOnKd1SHhvivm7WdD0bYdrNNgo0/edit#slide=id.g11d65f9e588_0_0).
 
@@ -114,7 +117,7 @@ Using the `redist_map` object, we can plot this adjacency list.
 plot(map_nc, adj=TRUE)
 ```
 
-You may need to (fix the adjacency list manually)] with the [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are bodies of water or islands connected by bridges.
+You may need to fix the adjacency list manually with the [`geomander` package](https://christophertkenny.com/geomander/reference/add_edge.html), particularly when there are bodies of water or islands connected by bridges.
 
 ### Further Pre-Processing
 
@@ -169,9 +172,9 @@ The simulation output from the SMC is unbiased random sample, but not always mea
 
 #### Soft Constraints
 
--   `redist` allows you to add soft constraints that are listed [here](https://alarm-redist.org/redist/reference/constraints.html).
--   Using [`add_constr_xyz()`](https://alarm-redist.org/redist/reference/constraints.html) (`xyz` varies depending on the constraints you want to add) functions, you can add constraints on the redistricting process to be encoded in the target distribution for sampling of `redist_smc()` and `redist_mergesplit()`.
--   Note that higher and higher strength values will eventually cause the algorithm's accuracy and efficiency to suffer. Whenever you use constraints, be sure to check all sampling diagnostics.
+-   `redist` allows you to add soft constraints that are listed [here](https://alarm-redist.org/redist/reference/constraints.html)
+-   Using [`add_constr_xyz()`](https://alarm-redist.org/redist/reference/constraints.html) (`xyz` varies depending on the constraints you want to add) functions, you can add constraints on the redistricting process to be encoded in the target distribution for sampling of `redist_smc()` and `redist_mergesplit()`
+-   Note that higher and higher strength values will eventually cause the algorithm's accuracy and efficiency to suffer, so be sure to check all sampling diagnostics.
 
 ### Example
 
@@ -200,7 +203,7 @@ redist_smc(map_nc_constr, 10)
 
 Now, as the population tolerance changes, the possible range of `total_pop` expanded between 708,387 and 782,954.
 
-#### Fewer County Splits
+#### Administrative Boundary Splits
 
 We can also add a soft constraints to the simulation. Here, we will try to add a constraint that prefers the fewer county splits by creating `redist_constr` object.
 
@@ -236,7 +239,7 @@ We will now demonstrate an example of redistricting analysis using the simulated
 
 ### Setup
 
-First, we load the required packages for analysis. If the packages are not installed yet, be sure to do so beforehand.
+First, we load the required packages for analysis. We also load the code for generating the validation plots, which will help us create visualizations for the summary statistics of the simulations.
 
 ```{r, include=TRUE}
 knitr::opts_chunk$set(echo = FALSE)
